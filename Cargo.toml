@@ -2,14 +2,15 @@
 members = [
     "./macro_puzzle",
     "./vimba_rs",
-    "./cs110l-spr-2020-starter-code/proj-1/deet",
-    "./cs110l-spr-2020-starter-code/week1/part-2-warmup",
-    "./cs110l-spr-2020-starter-code/week1/part-3-hangman",
-    "./cs110l-spr-2020-starter-code/week2/rdiff",
     "./actix_benchmark",
     "./actix_actor",
     "./actix_system_service",
     "./practice_rust",
     "./cxx_poc",
-    "./configuration_poc"
+    "./configuration_poc",
+    "./rust_reference",
+    "./rust_cookbook",
+    "./mmap_demo",
+    "./echo_command",
+    "./memory_management_ffi"
 ]
