@@ -967,6 +967,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "mutually-exclusive-trait"
+version = "0.1.0"
+
+[[package]]
 name = "net2"
 version = "0.2.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1000,6 +1004,10 @@ dependencies = [
  "memchr",
  "version_check",
 ]
+
+[[package]]
+name = "non-generic-inner-function"
+version = "0.1.0"
 
 [[package]]
 name = "num-integer"

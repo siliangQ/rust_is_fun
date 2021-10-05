@@ -12,5 +12,7 @@ members = [
     "./rust_cookbook",
     "./mmap_demo",
     "./echo_command",
-    "./memory_management_ffi"
+    "./memory_management_ffi",
+    "./non-generic-inner-function",
+    "./mutually-exclusive-trait"
 ]
