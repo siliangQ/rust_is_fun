@@ -5,6 +5,7 @@ use nix::sys::mman::{mmap, MapFlags, ProtFlags};
 use nix::sys::stat::Mode;
 use std::ffi::c_void;
 use std::ptr;
+
 fn main() {
     let pl_ddr_phy_base_addr = 0x400000000 as i64;
     let memfd = open("/dev/mem", OFlag::O_RDWR | OFlag::O_SYNC, Mode::empty()).unwrap();

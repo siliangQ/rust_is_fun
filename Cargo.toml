@@ -14,5 +14,9 @@ members = [
     "./echo_command",
     "./memory_management_ffi",
     "./non-generic-inner-function",
-    "./mutually-exclusive-trait"
+    "./mutually-exclusive-trait",
+    "./actix_double_free",
+    "./trait_bound",
+    "./tokio_poc",
+    "./rpmsg_async_notify"
 ]
