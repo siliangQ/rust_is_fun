@@ -2,7 +2,9 @@ use nix::fcntl::{open, OFlag};
 use nix::sys::stat::Mode;
 use nix::unistd::write;
 use snafu::{ResultExt, Snafu};
+use std::fs::{File, OpenOptions};
 use std::io;
+use std::os::unix::prelude::FileExt;
 use std::path::Path;
 #[derive(Debug, Snafu)]
 #[snafu(visibility = "pub")] // Sets the default visibility for these context selectors
@@ -45,6 +47,15 @@ impl RemoteprocManager {
             ))
         }
     }
+    pub fn load_firmware_rs(&self, firmware_name: String) -> Result<(), io::Error> {
+        let fd = OpenOptions::new()
+            .write(true)
+            .open(&self.firmware_path_str)?;
+
+        fd.write_all_at(firmware_name.as_bytes(), 0)?;
+        Ok(())
+    }
+
     /// load specific firmware on the remoteproc
     pub fn load_firmware(&self, firmware_name: String) -> Result<(), RemoteprocManagerError> {
         let firmware_buf = firmware_name.clone().into_bytes();
@@ -68,6 +79,12 @@ impl RemoteprocManager {
             })
         }
     }
+    pub fn start_rs(&self) -> Result<(), io::Error> {
+        let fd = OpenOptions::new().write(true).open(&self.state_path_str)?;
+
+        fd.write_all_at("start".as_bytes(), 0)?;
+        Ok(())
+    }
     /// start remoteproc
     pub fn start(&self) -> Result<(), RemoteprocManagerError> {
         let command = String::from("start").into_bytes();
@@ -90,6 +107,11 @@ impl RemoteprocManager {
                 source: nix::Error::EINTR,
             })
         }
+    }
+    pub fn stop_rs(&self) -> Result<(), io::Error> {
+        let fd = OpenOptions::new().write(true).open(&self.state_path_str)?;
+        fd.write_all_at("stop".as_bytes(), 0)?;
+        Ok(())
     }
     /// stop the remoteproc
     pub fn stop(&self) -> Result<(), RemoteprocManagerError> {

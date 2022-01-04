@@ -18,5 +18,7 @@ members = [
     "./actix_double_free",
     "./trait_bound",
     "./tokio_poc",
+]
+exclude = [
     "./rpmsg_async_notify"
 ]

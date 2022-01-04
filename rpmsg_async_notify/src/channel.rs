@@ -6,9 +6,9 @@ use nix::sys::stat::Mode;
 use nix::unistd::{access, close, read, write, AccessFlags};
 use snafu::ResultExt;
 use snafu::Snafu;
-use std::fs;
 use std::fs::File;
-use std::io::prelude::*;
+use std::fs::{self, OpenOptions};
+use std::io::{self, prelude::*};
 use std::os::unix::prelude::RawFd;
 use std::path::Path;
 
@@ -62,7 +62,7 @@ pub enum ChannelError {
     /// can't convert OsStr to String
     #[snafu(display("failed to convert to string in rust"))]
     OsStrConversion {},
-    /// a wrapper for I/O error in std
+    /// a wrapper for I/O error in std because the io::Error is not clonable
     #[snafu(display("{:?}", error))]
     IOError { error: String },
     /// a wrapper for SystemFileHanderError
@@ -204,38 +204,6 @@ pub trait AbstractRPMsgChannel: Sized {
     fn read(&mut self, capacity: usize) -> Result<Vec<u8>, ChannelError>;
 }
 
-struct SystemFileHandler {
-    fpath: String,
-    file_handler: RawFd,
-}
-impl SystemFileHandler {
-    pub fn new(fpath: String) -> Result<Self, SystemFileHandlerError> {
-        let inner_path = Path::new(&fpath);
-        while access(inner_path, AccessFlags::W_OK).is_err() {
-            println!("waiting for {:?}", inner_path)
-        }
-        let fd = open(inner_path, OFlag::O_WRONLY, Mode::empty()).context(FailedToOpen {
-            fpath: fpath.clone(),
-        })?;
-        Ok(SystemFileHandler {
-            fpath,
-            file_handler: fd,
-        })
-    }
-    pub fn write_str(&self, src: String) -> Result<usize, SystemFileHandlerError> {
-        let bytes = write(self.file_handler, src.as_bytes()).context(FailedToWrite {
-            data: src.clone(),
-            fpath: self.fpath.clone(),
-        })?;
-        Ok(bytes)
-    }
-    fn _close(&self) -> Result<(), SystemFileHandlerError> {
-        close(self.file_handler).context(FailedToClose {
-            fpath: self.fpath.clone(),
-        })?;
-        Ok(())
-    }
-}
 pub struct OctRPMsgChannel {
     // the name of connected rpmsg_device
     _rpmsg_device_name: String,
@@ -251,14 +219,16 @@ pub struct OctRPMsgChannel {
 pub fn register_rpmsg_driver_for_device(
     device_name: String,
     driver_name: String,
-) -> Result<(), ChannelError> {
+) -> Result<(), io::Error> {
     let driver_api = format!("/sys/bus/rpmsg/devices/{}/driver_override", device_name);
-    let fd = SystemFileHandler::new(driver_api)?;
-    fd.write_str(driver_name.clone())?;
+    let mut fd = OpenOptions::new().write(true).open(driver_api).unwrap();
+    fd.write_all(driver_name.as_bytes())?;
     let driver_bind_api = format!("/sys/bus/rpmsg/drivers/{}/bind", driver_name);
-    let fd = SystemFileHandler::new(driver_bind_api)?;
-    fd.write_str(device_name)?;
-    //fd.close()?; // test if the file handler could close automatically
+    let mut fd = OpenOptions::new()
+        .write(true)
+        .open(driver_bind_api)
+        .unwrap();
+    fd.write_all(device_name.as_bytes())?;
     Ok(())
 }
 
@@ -266,46 +236,34 @@ pub fn register_rpmsg_driver_for_device(
 pub fn search_control_interface(
     device_name: String,
     ctrl_prefix: String,
-) -> Result<String, ChannelError> {
+) -> Result<String, io::Error> {
     let ctrl_interface_dir_path_str = format!("/sys/bus/rpmsg/devices/{}/rpmsg", device_name);
     let ctrl_interface_dir_path = Path::new(&ctrl_interface_dir_path_str);
-    if ctrl_interface_dir_path.exists() && ctrl_interface_dir_path.is_dir() {
-        let dir_content =
-            fs::read_dir(ctrl_interface_dir_path).map_err(|_| ChannelError::FailedToReadDir {
-                dir_path: ctrl_interface_dir_path_str.clone(),
-            })?;
-        for entry in dir_content {
-            let path = entry
-                .map_err(|_| ChannelError::FailedToOpenDir {
-                    dir_path: ctrl_interface_dir_path_str.clone(),
-                })?
-                .path();
+    let dir_content = fs::read_dir(ctrl_interface_dir_path)?;
+    for entry in dir_content {
+        let path = entry?.path();
 
-            if let Some(path_str) = path.to_str() {
-                if path_str.contains(&ctrl_prefix) {
-                    if let Some(interface_id) = path.file_name() {
-                        return Ok(interface_id
-                            .to_str()
-                            .ok_or(ChannelError::OsStrConversion {})?
-                            .to_string());
-                    } else {
-                        error!("can't get interface id from path {:?}", path);
-                        continue;
-                    }
+        if let Some(path_str) = path.to_str() {
+            if path_str.contains(&ctrl_prefix) {
+                if let Some(interface_id) = path.file_name() {
+                    return Ok(interface_id
+                        .to_str()
+                        .ok_or(io::ErrorKind::InvalidData {})?
+                        .to_string());
+                } else {
+                    error!("can't get interface id from path {:?}", path);
+                    continue;
                 }
-            } else {
-                error!("can't convert {:?} to string", path);
-                continue;
             }
+        } else {
+            error!("can't convert {:?} to string", path);
+            continue;
         }
-        Err(ChannelError::FailedToFindCtrlInterface {
-            dir_path: ctrl_interface_dir_path_str.clone(),
-        })
-    } else {
-        Err(ChannelError::FailedToFindCtrlInterface {
-            dir_path: ctrl_interface_dir_path_str,
-        })
     }
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        "can't find the right control interface",
+    ))
 }
 
 /// seach the endpoint name created by control interface.(I don't know why we need to search instead of get it from somewhere)
@@ -322,10 +280,10 @@ pub fn search_endpoint_path_by_name(
         }
 
         // fetch name of candidate endpoint
-        let mut fd =
-            File::open(rpmsg_ept_name_registry_path).map_err(|e| ChannelError::IOError {
-                error: format!("{:?}", e),
-            })?;
+        let mut fd = OpenOptions::new()
+            .read(true)
+            .open(rpmsg_ept_name_registry_path)
+            .unwrap();
         let mut candidate_endpoint = String::new();
         fd.read_to_string(&mut candidate_endpoint)
             .map_err(|e| ChannelError::IOError {
@@ -364,12 +322,12 @@ impl AbstractRPMsgChannel for OctRPMsgChannel {
 
         // register RPMsg driver
         let rpmsg_driver_name = String::from("rpmsg_chrdev");
-        register_rpmsg_driver_for_device(device_name.clone(), rpmsg_driver_name)?;
+        register_rpmsg_driver_for_device(device_name.clone(), rpmsg_driver_name).unwrap();
         trace!("Register rpmsg driver");
 
         // look for control interface of character driver
         let ctrl_interface_name =
-            search_control_interface(device_name.clone(), "rpmsg_ctrl".to_string())?;
+            search_control_interface(device_name.clone(), "rpmsg_ctrl".to_string()).unwrap();
         let ctrl_interface_path = Path::new("/dev").join(ctrl_interface_name.clone());
         let ctrl_interface_handler = open(&ctrl_interface_path, OFlag::O_RDWR, Mode::empty())?;
 

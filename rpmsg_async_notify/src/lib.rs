@@ -7,6 +7,9 @@ use crate::channel::{
     ioctl_create_endpt, register_rpmsg_driver_for_device, search_control_interface,
     search_endpoint_path_by_name, RPMsgEndpointInfo,
 };
+use bincode::deserialize;
+use bincode::serialize_into;
+use bincode::serialized_size;
 use cpu_time::ProcessTime;
 use log::trace;
 use nix::libc::clock_t;
@@ -32,17 +35,21 @@ use std::{mem, path::Path};
 
 pub mod channel;
 pub mod remote_proc;
+pub mod time_utils;
 
 pub const RPMSG_HEADER_LEN: u32 = 16;
 pub const MAX_RPMSG_BUFF_SIZE: u32 = (512 - RPMSG_HEADER_LEN);
 pub const PAYLOAD_MAX_SIZE: usize = (MAX_RPMSG_BUFF_SIZE - 24) as usize;
 pub const RPMSG_ADDR_ANY: __u32 = 0xffffffff;
-pub const NUM_PAYLOADS: usize = 1_000_000;
+pub const NUM_PAYLOADS: usize = 1_00000;
 lazy_static! {
     pub static ref receive_payload: Mutex<[u8; 1024]> = Mutex::new([0u8; 1024]);
     pub static ref send_payload: Mutex<[u8; 1024]> = Mutex::new([0u8; 1024]);
     pub static ref send_tick: Mutex<HashMap<usize, clock_t>> = Mutex::new(HashMap::new());
     pub static ref receive_tick: Mutex<HashMap<usize, clock_t>> = Mutex::new(HashMap::new());
+    pub static ref send_tick_instant: Mutex<HashMap<usize, Instant>> = Mutex::new(HashMap::new());
+    pub static ref receive_tick_instant: Mutex<HashMap<usize, Instant>> =
+        Mutex::new(HashMap::new());
 }
 pub mod ffi {
     extern "C" {
@@ -51,14 +58,27 @@ pub mod ffi {
 }
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Payload {
-    pub num: u64,
-    pub size: u64,
+    pub num: usize,
     pub data: Vec<u8>,
+}
+impl Payload {
+    pub fn new(id: usize) -> Self {
+        Self {
+            num: id,
+            data: vec![0; 5],
+        }
+    }
+    pub fn serialize(&self) -> Vec<u8> {
+        let mut sent_buf = [0u8; 1024];
+        let ready_bytes = serialized_size(self).unwrap() as usize;
+        serialize_into(sent_buf.as_mut(), self).unwrap();
+        sent_buf[..ready_bytes].to_vec()
+    }
 }
 
 pub struct TimeStamp {
-    pub id: u64,
-    pub time_stamp: ProcessTime,
+    pub id: usize,
+    pub time_stamp: Instant,
 }
 pub struct TimeStampTick {
     pub id: u64,

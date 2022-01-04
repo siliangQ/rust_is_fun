@@ -1,0 +1,286 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'macro_puzzle'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=macro_puzzle",
+                    "--package=macro_puzzle"
+                ],
+                "filter": {
+                    "name": "macro_puzzle",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'macro_puzzle'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=macro_puzzle",
+                    "--package=macro_puzzle"
+                ],
+                "filter": {
+                    "name": "macro_puzzle",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'vimba_rs'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=vimba_rs",
+                    "--package=vimba_rs"
+                ],
+                "filter": {
+                    "name": "vimba_rs",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'vimba_rs'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=vimba_rs",
+                    "--package=vimba_rs"
+                ],
+                "filter": {
+                    "name": "vimba_rs",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'actix_benchmark'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=actix_benchmark",
+                    "--package=actix_benchmark"
+                ],
+                "filter": {
+                    "name": "actix_benchmark",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'actix_benchmark'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=actix_benchmark",
+                    "--package=actix_benchmark"
+                ],
+                "filter": {
+                    "name": "actix_benchmark",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'actix_actor'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=actix_actor",
+                    "--package=actix_actor"
+                ],
+                "filter": {
+                    "name": "actix_actor",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'actix_actor'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=actix_actor",
+                    "--package=actix_actor"
+                ],
+                "filter": {
+                    "name": "actix_actor",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'actix_system_service'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=actix_system_service",
+                    "--package=actix_system_service"
+                ],
+                "filter": {
+                    "name": "actix_system_service",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'actix_system_service'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=actix_system_service",
+                    "--package=actix_system_service"
+                ],
+                "filter": {
+                    "name": "actix_system_service",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in library 'practice_rust'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--lib",
+                    "--package=practice_rust"
+                ],
+                "filter": {
+                    "name": "practice_rust",
+                    "kind": "lib"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'cxx_poc'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=cxx_poc",
+                    "--package=cxx_poc"
+                ],
+                "filter": {
+                    "name": "cxx_poc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'cxx_poc'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=cxx_poc",
+                    "--package=cxx_poc"
+                ],
+                "filter": {
+                    "name": "cxx_poc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug executable 'configuration_poc'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=configuration_poc",
+                    "--package=configuration_poc"
+                ],
+                "filter": {
+                    "name": "configuration_poc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'configuration_poc'",
+            "cargo": {
+                "args": [
+                    "test",
+                    "--no-run",
+                    "--bin=configuration_poc",
+                    "--package=configuration_poc"
+                ],
+                "filter": {
+                    "name": "configuration_poc",
+                    "kind": "bin"
+                }
+            },
+            "args": [],
+            "cwd": "${workspaceFolder}"
+        }
+    ]
+}

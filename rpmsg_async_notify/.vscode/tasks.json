@@ -1,0 +1,32 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cargo",
+			"command": "build",
+			"args": [
+				"--example=signal_hook",
+				"--target=aarch64-unknown-linux-gnu"
+			],
+			"problemMatcher": [
+				"$rustc"
+			],
+			"group": "build",
+			"label": "build_signal_hook"
+		},
+		{
+			"label": "remote_debug_setup",
+			"type": "shell",
+			"command": "${workspaceFolder}/scripts/remote_debug.sh",
+			"args": [
+				"${workspaceFolder}",
+				"192.168.1.177",
+				"7777"
+			],
+			"group": "none",
+			"dependsOn": [
+				"build_signal_hook",
+			],
+		},
+	]
+}
