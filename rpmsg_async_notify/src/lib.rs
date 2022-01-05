@@ -68,12 +68,6 @@ impl Payload {
             data: vec![0; 5],
         }
     }
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut sent_buf = [0u8; 1024];
-        let ready_bytes = serialized_size(self).unwrap() as usize;
-        serialize_into(sent_buf.as_mut(), self).unwrap();
-        sent_buf[..ready_bytes].to_vec()
-    }
 }
 
 pub struct TimeStamp {

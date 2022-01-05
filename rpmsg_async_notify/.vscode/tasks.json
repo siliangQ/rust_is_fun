@@ -5,14 +5,14 @@
 			"type": "cargo",
 			"command": "build",
 			"args": [
-				"--example=signal_hook",
+				"--example=signal_hook_sync",
 				"--target=aarch64-unknown-linux-gnu"
 			],
 			"problemMatcher": [
 				"$rustc"
 			],
 			"group": "build",
-			"label": "build_signal_hook"
+			"label": "build_signal_hook_sync"
 		},
 		{
 			"label": "remote_debug_setup",

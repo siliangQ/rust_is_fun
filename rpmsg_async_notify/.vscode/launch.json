@@ -5,6 +5,35 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "type": "gdb",
+            "request": "attach",
+            "name": "Attach to gdbserver",
+            "executable": "${workspaceFolder}/target/aarch64-unknown-linux-gnu/debug/examples/epoll_sync",
+            "target": "192.168.1.177:2345",
+            "debugger_args": [
+                10
+            ],
+            "remote": true,
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+            "gdbpath": "aarch64-xilinx-linux-gdb",
+            "autorun": [
+                "source -v ${workspaceFolder}/debug.gdb"
+            ],
+        },
+        {
+            "type": "gdb",
+            "request": "launch",
+            "name": "Launch Program on remote board",
+            "target": "${workspaceFolder}/target/aarch64-unknown-linux-gnu/debug/examples/epoll_sync",
+            "cwd": "${workspaceRoot}",
+            "valuesFormatting": "parseText",
+            "gdbpath": "aarch64-xilinx-linux-gdb",
+            "autorun": [
+                "source -v ${workspaceFolder}/debug.gdb"
+            ]
+        },
+        {
             "type": "lldb",
             "request": "custom",
             "name": "remote_debug",
@@ -14,6 +43,17 @@
             ],
             "processCreateCommands": [
                 "gdb-remote 192.168.1.177:7777"
+            ]
+        },
+        {
+            "name": "gdb launch",
+            "type": "gdb",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "target": "${workspaceFolder}/target/aarch64-unknown-linux-gnu/debug/examples/signal_hook_sync",
+            "gdbpath": "aarch64-xilinx-linux-gdb",
+            "autorun": [
+                "source -v ${workspaceFolder}/debug.gdb"
             ]
         }
     ]

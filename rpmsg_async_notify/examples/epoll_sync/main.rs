@@ -7,10 +7,16 @@ use lazy_static::__Deref;
 use log::trace;
 use nix::fcntl::open;
 use nix::fcntl::OFlag;
+use nix::libc;
+use nix::libc::c_int;
 use nix::libc::clock_t;
+use nix::libc::epoll_event;
 use nix::libc::fcntl;
 use nix::libc::getpid;
+use nix::libc::FD_CLOEXEC;
+use nix::libc::F_GETFD;
 use nix::libc::F_GETFL;
+use nix::libc::F_SETFD;
 use nix::libc::F_SETFL;
 use nix::libc::F_SETOWN;
 use nix::libc::O_ASYNC;
@@ -32,9 +38,11 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
+use std::io;
 use std::io::Read;
 use std::io::Write;
 use std::ops::DerefMut;
+use std::os::unix::prelude::RawFd;
 use std::sync::mpsc::channel;
 use std::sync::mpsc::Receiver;
 use std::sync::mpsc::Sender;
@@ -45,7 +53,50 @@ use std::thread::sleep;
 use std::time::Duration;
 use std::time::Instant;
 
-fn send_thread() {}
+#[allow(unused_macros)]
+macro_rules! syscall {
+    ($fn: ident ( $($arg: expr),* $(,)* ) ) => {{
+        let res = unsafe { nix::libc::$fn($($arg, )*) };
+        if res == -1 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(res)
+        }
+    }};
+}
+
+// create the epoll handler
+fn epoll_create() -> io::Result<RawFd> {
+    let fd = syscall!(epoll_create1(0))?;
+    if let Ok(flags) = syscall!(fcntl(fd, F_GETFD)) {
+        let _ = syscall!(fcntl(fd, F_SETFD, flags | FD_CLOEXEC))?;
+    }
+    Ok(fd)
+}
+
+// bind epoll handler's interest
+fn add_interest(epoll_fd: RawFd, fd: RawFd, mut event: libc::epoll_event) -> io::Result<()> {
+    syscall!(epoll_ctl(epoll_fd, libc::EPOLL_CTL_ADD, fd, &mut event))?;
+    Ok(())
+}
+
+// modify epoll handler's interest
+fn modify_interest(epoll_fd: RawFd, fd: RawFd, mut event: libc::epoll_event) -> io::Result<()> {
+    syscall!(epoll_ctl(epoll_fd, libc::EPOLL_CTL_MOD, fd, &mut event))?;
+    Ok(())
+}
+
+// remove the fd from epoll handler's interest
+fn remove_interest(epoll_fd: RawFd, fd: RawFd) -> io::Result<()> {
+    syscall!(epoll_ctl(
+        epoll_fd,
+        libc::EPOLL_CTL_DEL,
+        fd,
+        std::ptr::null_mut()
+    ))?;
+    Ok(())
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
     let num_payloads = if args.len() > 1 {
@@ -72,36 +123,45 @@ fn main() {
             Mode::empty(),
         )
         .unwrap();
-        fcntl(fd, F_SETOWN, getpid()); // Tell the kernel to whom to send the signal? Reflected by PID number
-        let current_flags = fcntl(fd, F_GETFL); // The application program reads the flag bit Oflags
-        fcntl(fd, F_SETFL, current_flags | O_ASYNC);
 
-        //let fd = OpenOptions::new().read(true).write(true).open(endpoint_path).unwrap();
+        let epoll_fd = epoll_create().expect("can't create epoll handler");
+
+        let event = epoll_event {
+            events: (libc::EPOLLIN) as u32,
+            u64: 0,
+        };
+        add_interest(epoll_fd, fd, event).expect("can't add rpmsg device to epoll's interests");
+
         let endpoint_fd = Arc::new(Mutex::new(fd));
         let receive_tick = Arc::new(Mutex::new(HashMap::<usize, Instant>::new()));
         let send_tick = Arc::new(Mutex::new(HashMap::<usize, Instant>::new()));
 
         // register signal handler with signal-hook
         let (tx, rx) = channel::<TimeStamp>();
-        // receive thread
-        let mut signales = Signals::new(&[SIGIO]).unwrap();
-        let handle = signales.handle();
+        let mut events: Vec<epoll_event> = Vec::with_capacity(1024);
+
         let receive_endpoint = endpoint_fd.clone();
-        thread::spawn(move || {
-            for sig in signales.forever() {
-                if sig == SIGIO {
+        let receive_thread = thread::spawn(move || loop {
+            let res = match syscall!(epoll_wait(
+                epoll_fd,
+                events.as_mut_ptr() as *mut epoll_event,
+                1024,
+                -1
+            )) {
+                Ok(v) => v,
+                Err(e) => panic!("epoll error during wait, error: {}", e),
+            };
+            events.set_len(res as usize);
+            for event in events.iter() {
+                if event.events == libc::EPOLLIN as u32 {
+                    //println!("receive epoll event: {:?}", event);
                     let time_stamp = Instant::now();
                     let mut receive_buf = vec![10; 1024];
                     let received_bytes = read(*receive_endpoint.lock().unwrap(), &mut receive_buf)
                         .expect("can't read from endpoint");
 
-                    //let bytes_rcvd = receive_endpoint.lock().unwrap().read(&mut receive_buf).unwrap();
-                    //println!("read out {} bytes", received_bytes);
-
-                    //let bytes_rcvd = read(*receive_endpoint.lock().unwrap().deref(), &mut receive_buf).unwrap();
-                    //let raw_pointer = receive_payload[..bytes_rcvd].as_ptr() as *const Payload;
                     let r_payload: Payload = deserialize(&receive_buf[..received_bytes]).unwrap();
-
+                    println!("receive message: {:?}", r_payload);
                     // helper to investiagte the time distribution
                     let end_stamp = Instant::now();
                     if end_stamp - time_stamp > Duration::from_micros(300) {
@@ -120,6 +180,7 @@ fn main() {
                 }
             }
         });
+
         // send thread
         let send_endpoint = endpoint_fd.clone();
         let s_tick = send_tick.clone();
@@ -139,37 +200,16 @@ fn main() {
                 let sent_bytes = write(*send_endpoint.lock().unwrap(), &sent_buf[..ready_bytes])
                     .expect("failed to write to the endpoint");
 
-                // old time_stamp position(It will cause the receive time is pre to send time)
-
-                if time_stamp.elapsed() > Duration::from_millis(1) {
-                    println!("spend {:?} on write out data", time_stamp.elapsed());
-                }
-                assert_eq!(ready_bytes, sent_bytes);
-
+                //println!("send out message");
                 let mut tick_array = s_tick.lock().unwrap();
                 tick_array.insert(id, time_stamp);
 
-                //check if send time increamented
-                if let Some(ts) = tick_array.get(&(id - 1)) {
-                    assert_eq!(true, ts < &time_stamp);
-                } else {
-                    println!("can't find {}", id - 1);
-                }
-
-                //println!("send {} payload, {} bytes", id, sent_bytes);
                 if let Ok(message) = rx.recv() {
                     let mut r = r_tick.lock().unwrap();
-                    // check if receive time is incremented
-                    if let Some(pre_ts) = r.get(&(message.id - 1)) {
-                        assert_eq!(true, pre_ts < &message.time_stamp);
-                    } else {
-                        println!("can't find receive time for payload {}", message.id - 1);
-                    }
                     r.insert(message.id, message.time_stamp);
                 }
             }
         });
-
         thread_handle.join().unwrap();
 
         // wait for all messages come back and processed
@@ -228,6 +268,5 @@ fn main() {
         //println!("average delay: {:?}", total_diff as f32 / counter as f32);
 
         remote_proc.stop().unwrap();
-        handle.close();
     };
 }
